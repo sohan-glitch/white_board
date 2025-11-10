@@ -1,139 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Advanced Whiteboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixed Whiteboard with Lasso Tool</title>
 <style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        font-family: Arial, sans-serif;
-        height: 100vh;
-    }
-    canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: white;
-        cursor: crosshair;
-    }
-    .toolbar {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        display: flex;
-        align-items: center;
-        transition: all 0.4s ease;
-    }
-    .toolbox {
-        display: flex;
-        opacity: 0;
-        pointer-events: none;
-        transform: translateX(-20px);
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 12px;
-        padding: 10px 15px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-        gap: 10px;
-        transition: all 0.4s ease;
-    }
-    .toolbar.expanded .toolbox {
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateX(0);
-    }
-    .toggle-btn {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        font-size: 22px;
-        cursor: pointer;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
-        transition: transform 0.3s ease, background-color 0.3s ease;
-    }
-    .toggle-btn:hover {
-        background-color: #0056b3;
-        transform: rotate(90deg);
-    }
-    button, input[type="color"], input[type="range"] {
-        cursor: pointer;
-    }
-    button {
-        padding: 6px 10px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        background: #f8f8f8;
-        transition: background 0.3s ease;
-    }
-    button:hover {
-        background: #e0e0e0;
-    }
-    label {
-        font-size: 12px;
-        color: #333;
-        margin-right: 4px;
-    }
-    .tool {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 3px;
-    }
-    .lasso-menu {
-        position: absolute;
-        display: none;
-        flex-direction: row;
-        gap: 6px;
-        background: rgba(255,255,255,0.95);
-        border-radius: 8px;
-        padding: 5px 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: white;
+  cursor: crosshair;
+}
+/* Toolbar */
+.toolbar {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  transition: all 0.4s ease;
+}
+.toolbox {
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-20px);
+  background: rgba(255,255,255,0.95);
+  border-radius: 12px;
+  padding: 10px 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  gap: 10px;
+  transition: all 0.4s ease;
+}
+.toolbar.expanded .toolbox {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+.toggle-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+.toggle-btn:hover {
+  background-color: #0056b3;
+  transform: rotate(90deg);
+}
+button, input[type="color"], input[type="range"] {
+  cursor: pointer;
+}
+button {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f8f8f8;
+  transition: background 0.3s ease;
+}
+button:hover {
+  background: #e0e0e0;
+}
+label {
+  font-size: 12px;
+  color: #333;
+  margin-right: 4px;
+}
+.tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.lasso-menu {
+  position: absolute;
+  display: none;
+  flex-direction: row;
+  gap: 6px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 8px;
+  padding: 5px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
 </style>
 </head>
 <body>
 
 <canvas id="whiteboard"></canvas>
 
-<!-- Floating Toolbar -->
 <div class="toolbar" id="toolbar">
-    <button class="toggle-btn" id="toggleMenu">⬆</button>
-    <div class="toolbox" id="toolbox">
-        <div class="tool">
-            <label>Pen</label>
-            <input type="color" id="penColorPicker" value="#000000">
-            <button id="applyPen">Done</button>
-        </div>
-        <div class="tool">
-            <label>BG</label>
-            <input type="color" id="bgColorPicker" value="#ffffff">
-            <button id="applyBG">Done</button>
-        </div>
-        <div class="tool">
-            <label>Pen Size</label>
-            <input type="range" id="penSize" min="1" max="50" value="5">
-        </div>
-        <div class="tool">
-            <label>Eraser Size</label>
-            <input type="range" id="eraserSize" min="5" max="100" value="30">
-        </div>
-        <button id="penBtn">✏️ Pen</button>
-        <button id="eraseBtn">🧽 Eraser</button>
-        <button id="lassoBtn">✂️ Lasso</button>
+  <button class="toggle-btn" id="toggleMenu">⬆</button>
+  <div class="toolbox" id="toolbox">
+    <div class="tool">
+      <label>Pen</label>
+      <input type="color" id="penColorPicker" value="#000000">
+      <button id="applyPen">Done</button>
     </div>
+    <div class="tool">
+      <label>BG</label>
+      <input type="color" id="bgColorPicker" value="#ffffff">
+      <button id="applyBG">Done</button>
+    </div>
+    <div class="tool">
+      <label>Pen Size</label>
+      <input type="range" id="penSize" min="1" max="50" value="5">
+    </div>
+    <div class="tool">
+      <label>Eraser Size</label>
+      <input type="range" id="eraserSize" min="5" max="100" value="30">
+    </div>
+    <button id="penBtn">✏️ Pen</button>
+    <button id="eraseBtn">🧽 Eraser</button>
+    <button id="lassoBtn">✂️ Lasso</button>
+  </div>
 </div>
 
-<!-- Lasso action menu -->
 <div class="lasso-menu" id="lassoMenu">
-    <button id="moveBtn">Move</button>
-    <button id="deleteBtn">Delete</button>
-    <button id="resizeBtn">Resize</button>
+  <button id="moveBtn">Move</button>
+  <button id="deleteBtn">Delete</button>
+  <button id="resizeBtn">Resize</button>
 </div>
 
 <script>
@@ -142,206 +140,201 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// state
 let drawing = false, eraseMode = false, lassoMode = false;
 let currentColor = '#000000';
 let bgColor = '#ffffff';
 let penSize = 5, eraserSize = 30;
 let lastX = 0, lastY = 0;
 
-// selection state
+// selection
 let selectionPath = [];
 let selectionImage = null;
 let selectionBounds = null;
-let isMoving = false;
-let isResizing = false;
-let offsetX, offsetY;
+let tempCanvas = document.createElement('canvas');
+let tctx = tempCanvas.getContext('2d');
+tempCanvas.width = canvas.width;
+tempCanvas.height = canvas.height;
+let baseImage = null;
 
-// initial fill
-ctx.fillStyle = bgColor;
-ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-// draw/erase
-function draw(e) {
-  if (!drawing || lassoMode) return;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
-  if (eraseMode) {
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.lineWidth = eraserSize;
-  } else {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = currentColor;
-    ctx.lineWidth = penSize;
-  }
-  ctx.lineTo(e.offsetX, e.offsetY);
-  ctx.stroke();
-  ctx.closePath();
-  [lastX, lastY] = [e.offsetX, e.offsetY];
-}
-
-// lasso drawing
-function drawLasso(e) {
-  if (!lassoMode || !drawing) return;
-  ctx.strokeStyle = '#007bff';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([6, 4]);
-  ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
-  ctx.lineTo(e.offsetX, e.offsetY);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  selectionPath.push([e.offsetX, e.offsetY]);
-  [lastX, lastY] = [e.offsetX, e.offsetY];
-}
-
-canvas.addEventListener('mousedown', e => {
-  drawing = true;
-  [lastX, lastY] = [e.offsetX, e.offsetY];
-  if (lassoMode) selectionPath = [[e.offsetX, e.offsetY]];
-});
-canvas.addEventListener('mousemove', e => {
-  if (lassoMode) drawLasso(e);
-  else draw(e);
-});
-canvas.addEventListener('mouseup', e => {
-  drawing = false;
-  if (lassoMode) finalizeLasso(e);
-});
-canvas.addEventListener('mouseout', () => (drawing = false));
-
-function finalizeLasso(e) {
-  if (selectionPath.length < 3) return;
-  ctx.beginPath();
-  ctx.moveTo(selectionPath[0][0], selectionPath[0][1]);
-  selectionPath.forEach(p => ctx.lineTo(p[0], p[1]));
-  ctx.closePath();
-
-  const minX = Math.min(...selectionPath.map(p => p[0]));
-  const maxX = Math.max(...selectionPath.map(p => p[0]));
-  const minY = Math.min(...selectionPath.map(p => p[1]));
-  const maxY = Math.max(...selectionPath.map(p => p[1]));
-  const w = maxX - minX, h = maxY - minY;
-  if (w <= 0 || h <= 0) return;
-  selectionBounds = { x: minX, y: minY, w, h };
-  selectionImage = ctx.getImageData(minX, minY, w, h);
-  ctx.clearRect(minX, minY, w, h);
-  showLassoMenu(minX + w / 2, minY + h / 2);
-  selectionPath = [];
-}
-
-function showLassoMenu(x, y) {
-  const menu = document.getElementById('lassoMenu');
-  menu.style.display = 'flex';
-  menu.style.left = `${x}px`;
-  menu.style.top = `${y}px`;
-}
-
-// move / delete / resize
-document.getElementById('moveBtn').addEventListener('click', () => {
-  isMoving = true;
-  hideLassoMenu();
-});
-document.getElementById('deleteBtn').addEventListener('click', () => {
-  if (selectionBounds) {
-    ctx.clearRect(selectionBounds.x, selectionBounds.y, selectionBounds.w, selectionBounds.h);
-  }
-  selectionBounds = null;
-  hideLassoMenu();
-});
-document.getElementById('resizeBtn').addEventListener('click', () => {
-  isResizing = true;
-  hideLassoMenu();
-});
-
-canvas.addEventListener('mousedown', e => {
-  if (isMoving && selectionImage) {
-    offsetX = e.offsetX - selectionBounds.x;
-    offsetY = e.offsetY - selectionBounds.y;
-  }
-});
-canvas.addEventListener('mousemove', e => {
-  if (isMoving && selectionImage) {
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const x = e.offsetX - offsetX;
-    const y = e.offsetY - offsetY;
-    ctx.putImageData(selectionImage, x, y);
-    selectionBounds.x = x;
-    selectionBounds.y = y;
-  } else if (isResizing && selectionImage) {
-    const w = e.offsetX - selectionBounds.x;
-    const h = e.offsetY - selectionBounds.y;
-    const tempCanvas = document.createElement('canvas');
-    const tctx = tempCanvas.getContext('2d');
-    tempCanvas.width = selectionImage.width;
-    tempCanvas.height = selectionImage.height;
-    tctx.putImageData(selectionImage, 0, 0);
-    ctx.clearRect(selectionBounds.x, selectionBounds.y, selectionBounds.w, selectionBounds.h);
-    ctx.drawImage(tempCanvas, selectionBounds.x, selectionBounds.y, w, h);
-    selectionBounds.w = w;
-    selectionBounds.h = h;
-  }
-});
-canvas.addEventListener('mouseup', e => {
-  isMoving = false;
-  isResizing = false;
-});
-
-function hideLassoMenu() {
-  document.getElementById('lassoMenu').style.display = 'none';
-}
-
-// Toolbar toggle
-const toolbar = document.getElementById('toolbar');
-document.getElementById('toggleMenu').addEventListener('click', () => {
-  toolbar.classList.toggle('expanded');
-  document.getElementById('toggleMenu').textContent = toolbar.classList.contains('expanded') ? '⬇' : '⬆';
-});
-
-// Tool buttons
-document.getElementById('penBtn').addEventListener('click', () => {
-  eraseMode = false;
-  lassoMode = false;
-  canvas.style.cursor = 'crosshair';
-});
-document.getElementById('eraseBtn').addEventListener('click', () => {
-  eraseMode = !eraseMode;
-  lassoMode = false;
-  canvas.style.cursor = eraseMode ? 'cell' : 'crosshair';
-});
-document.getElementById('lassoBtn').addEventListener('click', () => {
-  lassoMode = !lassoMode;
-  eraseMode = false;
-  canvas.style.cursor = lassoMode ? 'crosshair' : 'default';
-});
-
-// Color + background "done" buttons
-let tempPenColor = currentColor;
-let tempBGColor = bgColor;
-
-document.getElementById('penColorPicker').addEventListener('input', e => {
-  tempPenColor = e.target.value;
-});
-document.getElementById('applyPen').addEventListener('click', () => {
-  currentColor = tempPenColor;
-});
-
-document.getElementById('bgColorPicker').addEventListener('input', e => {
-  tempBGColor = e.target.value;
-});
-document.getElementById('applyBG').addEventListener('click', () => {
-  bgColor = tempBGColor;
-  canvas.style.backgroundColor = bgColor;
+function fillBackground() {
   ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+fillBackground();
+
+// Draw / erase
+function draw(e){
+  if(!drawing || lassoMode) return;
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.beginPath();
+  ctx.moveTo(lastX,lastY);
+  if(eraseMode){
+    ctx.globalCompositeOperation='destination-out';
+    ctx.lineWidth=eraserSize;
+  } else {
+    ctx.globalCompositeOperation='source-over';
+    ctx.strokeStyle=currentColor;
+    ctx.lineWidth=penSize;
+  }
+  ctx.lineTo(e.offsetX,e.offsetY);
+  ctx.stroke();
+  ctx.closePath();
+  [lastX,lastY]=[e.offsetX,e.offsetY];
+}
+
+// Draw lasso overlay on tempCanvas (not main)
+function drawLasso(e){
+  if(!lassoMode || !drawing) return;
+  tctx.clearRect(0,0,tempCanvas.width,tempCanvas.height);
+  tctx.strokeStyle='#007bff';
+  tctx.setLineDash([6,4]);
+  tctx.beginPath();
+  tctx.moveTo(selectionPath[0][0],selectionPath[0][1]);
+  selectionPath.forEach(p=>tctx.lineTo(p[0],p[1]));
+  tctx.lineTo(e.offsetX,e.offsetY);
+  tctx.stroke();
+  tctx.setLineDash([]);
+}
+
+canvas.addEventListener('mousedown',e=>{
+  drawing=true;
+  [lastX,lastY]=[e.offsetX,e.offsetY];
+  if(lassoMode){
+    selectionPath=[[e.offsetX,e.offsetY]];
+    baseImage=ctx.getImageData(0,0,canvas.width,canvas.height);
+  }
+});
+canvas.addEventListener('mousemove',e=>{
+  if(lassoMode){
+    selectionPath.push([e.offsetX,e.offsetY]);
+    drawLasso(e);
+    redraw();
+  } else draw(e);
+});
+canvas.addEventListener('mouseup',e=>{
+  if(lassoMode){
+    finalizeLasso();
+  }
+  drawing=false;
+});
+canvas.addEventListener('mouseout',()=>drawing=false);
+
+function redraw(){
+  ctx.putImageData(baseImage,0,0);
+  ctx.drawImage(tempCanvas,0,0);
+}
+
+function finalizeLasso(){
+  if(selectionPath.length<3) return;
+  const xs=selectionPath.map(p=>p[0]);
+  const ys=selectionPath.map(p=>p[1]);
+  const minX=Math.min(...xs),maxX=Math.max(...xs);
+  const minY=Math.min(...ys),maxY=Math.max(...ys);
+  const w=maxX-minX, h=maxY-minY;
+  selectionBounds={x:minX,y:minY,w,h};
+  selectionImage=ctx.getImageData(minX,minY,w,h);
+  showLassoMenu(minX+w/2,minY+h/2);
+  tctx.clearRect(0,0,tempCanvas.width,tempCanvas.height);
+  redraw();
+}
+
+function showLassoMenu(x,y){
+  const menu=document.getElementById('lassoMenu');
+  menu.style.display='flex';
+  menu.style.left=`${x}px`;
+  menu.style.top=`${y}px`;
+}
+function hideLassoMenu(){
+  document.getElementById('lassoMenu').style.display='none';
+}
+
+document.getElementById('moveBtn').addEventListener('click',()=>{
+  if(!selectionImage)return;
+  hideLassoMenu();
+  moveSelection();
+});
+document.getElementById('deleteBtn').addEventListener('click',()=>{
+  if(!selectionBounds)return;
+  ctx.clearRect(selectionBounds.x,selectionBounds.y,selectionBounds.w,selectionBounds.h);
+  hideLassoMenu();
+});
+document.getElementById('resizeBtn').addEventListener('click',()=>{
+  if(!selectionImage)return;
+  hideLassoMenu();
+  resizeSelection();
 });
 
-// size sliders
-document.getElementById('penSize').addEventListener('input', e => penSize = e.target.value);
-document.getElementById('eraserSize').addEventListener('input', e => eraserSize = e.target.value);
+function moveSelection(){
+  let moving=true;
+  function move(e){
+    if(!moving)return;
+    ctx.putImageData(baseImage,0,0);
+    ctx.putImageData(selectionImage,e.offsetX-selectionBounds.w/2,e.offsetY-selectionBounds.h/2);
+  }
+  function end(e){
+    moving=false;
+    ctx.putImageData(baseImage,0,0);
+    ctx.putImageData(selectionImage,e.offsetX-selectionBounds.w/2,e.offsetY-selectionBounds.h/2);
+    canvas.removeEventListener('mousemove',move);
+    canvas.removeEventListener('mouseup',end);
+  }
+  canvas.addEventListener('mousemove',move);
+  canvas.addEventListener('mouseup',end);
+}
+function resizeSelection(){
+  let resizing=true;
+  function resize(e){
+    if(!resizing)return;
+    const scaleX=(e.offsetX-selectionBounds.x)/selectionBounds.w;
+    const scaleY=(e.offsetY-selectionBounds.y)/selectionBounds.h;
+    const temp=document.createElement('canvas');
+    temp.width=selectionImage.width;
+    temp.height=selectionImage.height;
+    temp.getContext('2d').putImageData(selectionImage,0,0);
+    ctx.putImageData(baseImage,0,0);
+    ctx.drawImage(temp,selectionBounds.x,selectionBounds.y,selectionBounds.w*scaleX,selectionBounds.h*scaleY);
+  }
+  function end(){
+    resizing=false;
+    canvas.removeEventListener('mousemove',resize);
+    canvas.removeEventListener('mouseup',end);
+  }
+  canvas.addEventListener('mousemove',resize);
+  canvas.addEventListener('mouseup',end);
+}
+
+// Toolbar
+const toolbar=document.getElementById('toolbar');
+document.getElementById('toggleMenu').addEventListener('click',()=>{
+  toolbar.classList.toggle('expanded');
+  document.getElementById('toggleMenu').textContent=toolbar.classList.contains('expanded')?'⬇':'⬆';
+});
+
+// Tools
+document.getElementById('penBtn').addEventListener('click',()=>{
+  eraseMode=false;lassoMode=false;canvas.style.cursor='crosshair';
+});
+document.getElementById('eraseBtn').addEventListener('click',()=>{
+  eraseMode=!eraseMode;lassoMode=false;canvas.style.cursor=eraseMode?'cell':'crosshair';
+});
+document.getElementById('lassoBtn').addEventListener('click',()=>{
+  lassoMode=!lassoMode;eraseMode=false;canvas.style.cursor=lassoMode?'crosshair':'default';
+});
+
+// Color buttons
+let tempPenColor=currentColor;
+let tempBGColor=bgColor;
+document.getElementById('penColorPicker').addEventListener('input',e=>tempPenColor=e.target.value);
+document.getElementById('applyPen').addEventListener('click',()=>currentColor=tempPenColor);
+document.getElementById('bgColorPicker').addEventListener('input',e=>tempBGColor=e.target.value);
+document.getElementById('applyBG').addEventListener('click',()=>{
+  bgColor=tempBGColor;
+  canvas.style.backgroundColor=bgColor;
+});
+
+// size
+document.getElementById('penSize').addEventListener('input',e=>penSize=e.target.value);
+document.getElementById('eraserSize').addEventListener('input',e=>eraserSize=e.target.value);
 </script>
 </body>
 </html>

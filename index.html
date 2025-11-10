@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whiteboard</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f1f1f1;
+            font-family: Arial, sans-serif;
+        }
+        .whiteboard-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: white;
+            padding: 10px;
+            border: 2px solid #ccc;
+        }
+        canvas {
+            border: 1px solid black;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            width: 300px;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .color-picker {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="whiteboard-container">
+        <canvas id="whiteboard" width="600" height="400"></canvas>
+        <div class="controls">
+            <button id="undoBtn">Undo</button>
+            <button id="redoBtn">Redo</button>
+            <button id="eraseBtn">Erase</button>
+            <input type="color" id="colorPicker" class="color-picker">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('whiteboard');
+        const ctx = canvas.getContext('2d');
+
+        let drawing = false;
+        let history = [];
+        let undone = [];
+        let currentColor = '#000000';
+        let lastX = 0;
+        let lastY = 0;
+        let lineWidth = 5;
+
+        // Start drawing
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        // Draw on mousemove
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        // Stop drawing
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            saveState();
+        });
+
+        // Erase mode
+        let eraseMode = false;
+        document.getElementById('eraseBtn').addEventListener('click', () => {
+            eraseMode = !eraseMode;
+            if (eraseMode) {
+                document.getElementById('eraseBtn').style.backgroundColor = '#ff0000';
+            } else {
+                document.getElementById('eraseBtn').style.backgroundColor = '';
+            }
+        });
+
+        // Change pen color
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            currentColor = e.target.value;
+        });
+
+        // Undo functionality
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            if (history.length > 0) {
+                const lastState = history.pop();
+                undone.push(lastState);
+                redrawCanvas();
+            }
+        });
+
+        // Redo functionality
+        document.getElementById('redoBtn').addEventListener('click', () => {
+            if (undone.length > 0) {
+                const state = undone.pop();
+                history.push(state);
+                ctx.putImageData(state, 0, 0);
+            }
+        });
+
+        // Save canvas state for undo
+        function saveState() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            history.push(imageData);
+            if (history.length > 10) {
+                history.shift(); // Limit the history size to 10
+            }
+        }
+
+        // Redraw the canvas from history
+        function redrawCanvas() {
+            if (history.length === 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
+                const state = history[history.length - 1];
+                ctx.putImageData(state, 0, 0);
+            }
+        }
+
+        // Clear the canvas
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            history = [];
+            undone = [];
+        }
+
+        // Initialize drawing state
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+    </script>
+
+</body>
+</html>

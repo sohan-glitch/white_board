@@ -1,187 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whiteboard</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Prevent scrolling */
-            height: 100vh;
-            background-color: #f1f1f1;
-            font-family: Arial, sans-serif;
-        }
-        .whiteboard-container {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            width: 100%;
-        }
-        canvas {
-            border: 1px solid black;
-            background-color: white; /* Default background */
-        }
-        .controls {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            display: flex;
-            flex-direction: column;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 8px;
-        }
-        button, input[type="color"] {
-            padding: 8px 15px;
-            margin: 5px;
-            cursor: pointer;
-        }
-        .control-group {
-            margin-bottom: 10px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whiteboard</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100vh;
+        background-color: #f1f1f1;
+        font-family: Arial, sans-serif;
+    }
+    canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: white;
+        cursor: crosshair;
+    }
+    /* Toolbar base */
+    .toolbar {
+        position: fixed;
+        bottom: 15px;
+        left: 15px;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+    .toolbox {
+        display: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 8px;
+        padding: 10px;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .toolbar.expanded .toolbox {
+        display: flex;
+    }
+    /* Toggle button */
+    .toggle-btn {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        transition: background 0.3s ease;
+    }
+    .toggle-btn:hover {
+        background-color: #0056b3;
+    }
+    /* Buttons & Inputs */
+    button, input[type="color"], input[type="range"] {
+        cursor: pointer;
+    }
+    button {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background: #f8f8f8;
+    }
+    button:hover {
+        background: #e0e0e0;
+    }
+    label {
+        font-size: 12px;
+        color: #333;
+        margin-right: 5px;
+    }
+</style>
 </head>
 <body>
 
-    <div class="whiteboard-container">
-        <canvas id="whiteboard"></canvas>
-        <div class="controls">
-            <div class="control-group">
-                <button id="undoBtn">Undo</button>
-                <button id="redoBtn">Redo</button>
-                <button id="eraseBtn">Erase</button>
-            </div>
-            <div class="control-group">
-                <input type="color" id="colorPicker" value="#000000">
-                <label for="colorPicker">Pen Color</label>
-            </div>
-            <div class="control-group">
-                <input type="color" id="bgColorPicker" value="#ffffff">
-                <label for="bgColorPicker">Background Color</label>
-            </div>
+<canvas id="whiteboard"></canvas>
+
+<div class="toolbar" id="toolbar">
+    <button class="toggle-btn" id="toggleMenu">⬆</button>
+    <div class="toolbox" id="toolbox">
+        <div>
+            <label>Pen</label>
+            <input type="color" id="colorPicker" value="#000000">
         </div>
+        <div>
+            <label>BG</label>
+            <input type="color" id="bgColorPicker" value="#ffffff">
+        </div>
+        <div>
+            <label>Pen Size</label>
+            <input type="range" id="penSize" min="1" max="50" value="5">
+        </div>
+        <div>
+            <label>Eraser Size</label>
+            <input type="range" id="eraserSize" min="5" max="100" value="30">
+        </div>
+        <button id="eraseBtn">🧽 Erase</button>
+        <button id="undoBtn">↩️</button>
+        <button id="redoBtn">↪️</button>
     </div>
+</div>
 
-    <script>
-        const canvas = document.getElementById('whiteboard');
-        const ctx = canvas.getContext('2d');
+<script>
+const canvas = document.getElementById('whiteboard');
+const ctx = canvas.getContext('2d');
+const toolbox = document.getElementById('toolbox');
+const toolbar = document.getElementById('toolbar');
+const toggleMenu = document.getElementById('toggleMenu');
 
-        // Set canvas size to full screen
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+let drawing = false;
+let eraseMode = false;
+let history = [];
+let undone = [];
+let currentColor = '#000000';
+let bgColor = '#ffffff';
+let penSize = 5;
+let eraserSize = 30;
+let lastX = 0;
+let lastY = 0;
 
-        let drawing = false;
-        let history = [];
-        let undone = [];
-        let currentColor = '#000000';
-        let bgColor = '#ffffff';
-        let eraseMode = false;
-        let lineWidth = 5;
-        let lastX = 0;
-        let lastY = 0;
+// Set canvas size
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-        // Initialize canvas
-        function init() {
-            ctx.strokeStyle = currentColor;
-            ctx.lineWidth = lineWidth;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.fillStyle = bgColor;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+// Initialize background
+ctx.fillStyle = bgColor;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Event listeners for drawing
-        canvas.addEventListener('mousedown', (e) => {
-            drawing = true;
-            [lastX, lastY] = [e.offsetX, e.offsetY];
-        });
+// Draw function
+function draw(e) {
+    if (!drawing) return;
+    if (eraseMode) {
+        ctx.clearRect(e.offsetX - eraserSize / 2, e.offsetY - eraserSize / 2, eraserSize, eraserSize);
+    } else {
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = penSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+        ctx.closePath();
+    }
+    [lastX, lastY] = [e.offsetX, e.offsetY];
+}
 
-        canvas.addEventListener('mousemove', (e) => {
-            if (!drawing) return;
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(e.offsetX, e.offsetY);
-            if (eraseMode) {
-                ctx.clearRect(e.offsetX - lineWidth / 2, e.offsetY - lineWidth / 2, lineWidth, lineWidth); // Erase
-            } else {
-                ctx.strokeStyle = currentColor;
-                ctx.lineWidth = lineWidth;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.stroke();
-            }
-            [lastX, lastY] = [e.offsetX, e.offsetY];
-        });
+// Save canvas state
+function saveState() {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    history.push(imageData);
+    if (history.length > 20) history.shift();
+}
 
-        canvas.addEventListener('mouseup', () => {
-            drawing = false;
-            saveState();
-        });
+// Undo
+document.getElementById('undoBtn').addEventListener('click', () => {
+    if (history.length > 0) {
+        const last = history.pop();
+        undone.push(last);
+        redrawCanvas();
+    }
+});
 
-        // Erase button functionality
-        document.getElementById('eraseBtn').addEventListener('click', () => {
-            eraseMode = !eraseMode;
-            document.getElementById('eraseBtn').style.backgroundColor = eraseMode ? '#ff0000' : '';
-        });
+// Redo
+document.getElementById('redoBtn').addEventListener('click', () => {
+    if (undone.length > 0) {
+        const state = undone.pop();
+        history.push(state);
+        ctx.putImageData(state, 0, 0);
+    }
+});
 
-        // Change pen color
-        document.getElementById('colorPicker').addEventListener('input', (e) => {
-            currentColor = e.target.value;
-        });
+// Redraw
+function redrawCanvas() {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (history.length > 0) {
+        ctx.putImageData(history[history.length - 1], 0, 0);
+    }
+}
 
-        // Change background color
-        document.getElementById('bgColorPicker').addEventListener('input', (e) => {
-            bgColor = e.target.value;
-            canvas.style.backgroundColor = bgColor;  // Change the background color of canvas
-            init();  // Reinitialize canvas with the new background color
-        });
+// Event listeners
+canvas.addEventListener('mousedown', e => {
+    drawing = true;
+    [lastX, lastY] = [e.offsetX, e.offsetY];
+});
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', () => {
+    drawing = false;
+    saveState();
+});
+canvas.addEventListener('mouseout', () => drawing = false);
 
-        // Undo functionality
-        document.getElementById('undoBtn').addEventListener('click', () => {
-            if (history.length > 0) {
-                const lastState = history.pop();
-                undone.push(lastState);
-                redrawCanvas();
-            }
-        });
+// Toggle menu
+toggleMenu.addEventListener('click', () => {
+    toolbar.classList.toggle('expanded');
+    toggleMenu.textContent = toolbar.classList.contains('expanded') ? '⬇' : '⬆';
+});
 
-        // Redo functionality
-        document.getElementById('redoBtn').addEventListener('click', () => {
-            if (undone.length > 0) {
-                const state = undone.pop();
-                history.push(state);
-                ctx.putImageData(state, 0, 0);
-            }
-        });
+// Color pickers
+document.getElementById('colorPicker').addEventListener('input', e => currentColor = e.target.value);
+document.getElementById('bgColorPicker').addEventListener('input', e => {
+    bgColor = e.target.value;
+    redrawCanvas();
+});
 
-        // Save canvas state for undo
-        function saveState() {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            history.push(imageData);
-            if (history.length > 10) {
-                history.shift(); // Limit the history size to 10
-            }
-        }
+// Size controls
+document.getElementById('penSize').addEventListener('input', e => penSize = e.target.value);
+document.getElementById('eraserSize').addEventListener('input', e => eraserSize = e.target.value);
 
-        // Redraw the canvas from history
-        function redrawCanvas() {
-            if (history.length === 0) {
-                init(); // If no history, clear the canvas and reapply the bg color
-            } else {
-                const state = history[history.length - 1];
-                ctx.putImageData(state, 0, 0);
-            }
-        }
+// Eraser
+document.getElementById('eraseBtn').addEventListener('click', () => {
+    eraseMode = !eraseMode;
+    document.getElementById('eraseBtn').style.background = eraseMode ? '#ffcccc' : '';
+});
 
-        // Initialize canvas when the page loads
-        init();
-
-    </script>
+</script>
 
 </body>
 </html>

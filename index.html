@@ -8,9 +8,7 @@
         body {
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow: hidden; /* Prevent scrolling */
             height: 100vh;
             background-color: #f1f1f1;
             font-family: Arial, sans-serif;
@@ -20,38 +18,52 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: white;
-            padding: 10px;
-            border: 2px solid #ccc;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
         }
         canvas {
             border: 1px solid black;
+            background-color: white; /* Default background */
         }
         .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
             display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-            width: 300px;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
         }
-        button {
+        button, input[type="color"] {
             padding: 8px 15px;
             margin: 5px;
             cursor: pointer;
         }
-        .color-picker {
-            margin-left: 10px;
+        .control-group {
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
 
     <div class="whiteboard-container">
-        <canvas id="whiteboard" width="600" height="400"></canvas>
+        <canvas id="whiteboard"></canvas>
         <div class="controls">
-            <button id="undoBtn">Undo</button>
-            <button id="redoBtn">Redo</button>
-            <button id="eraseBtn">Erase</button>
-            <input type="color" id="colorPicker" class="color-picker">
+            <div class="control-group">
+                <button id="undoBtn">Undo</button>
+                <button id="redoBtn">Redo</button>
+                <button id="eraseBtn">Erase</button>
+            </div>
+            <div class="control-group">
+                <input type="color" id="colorPicker" value="#000000">
+                <label for="colorPicker">Pen Color</label>
+            </div>
+            <div class="control-group">
+                <input type="color" id="bgColorPicker" value="#ffffff">
+                <label for="bgColorPicker">Background Color</label>
+            </div>
         </div>
     </div>
 
@@ -59,56 +71,74 @@
         const canvas = document.getElementById('whiteboard');
         const ctx = canvas.getContext('2d');
 
+        // Set canvas size to full screen
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
         let drawing = false;
         let history = [];
         let undone = [];
         let currentColor = '#000000';
+        let bgColor = '#ffffff';
+        let eraseMode = false;
+        let lineWidth = 5;
         let lastX = 0;
         let lastY = 0;
-        let lineWidth = 5;
 
-        // Start drawing
+        // Initialize canvas
+        function init() {
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Event listeners for drawing
         canvas.addEventListener('mousedown', (e) => {
             drawing = true;
             [lastX, lastY] = [e.offsetX, e.offsetY];
         });
 
-        // Draw on mousemove
         canvas.addEventListener('mousemove', (e) => {
             if (!drawing) return;
-            ctx.strokeStyle = currentColor;
-            ctx.lineWidth = lineWidth;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(e.offsetX, e.offsetY);
-            ctx.stroke();
-
+            if (eraseMode) {
+                ctx.clearRect(e.offsetX - lineWidth / 2, e.offsetY - lineWidth / 2, lineWidth, lineWidth); // Erase
+            } else {
+                ctx.strokeStyle = currentColor;
+                ctx.lineWidth = lineWidth;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
             [lastX, lastY] = [e.offsetX, e.offsetY];
         });
 
-        // Stop drawing
         canvas.addEventListener('mouseup', () => {
             drawing = false;
             saveState();
         });
 
-        // Erase mode
-        let eraseMode = false;
+        // Erase button functionality
         document.getElementById('eraseBtn').addEventListener('click', () => {
             eraseMode = !eraseMode;
-            if (eraseMode) {
-                document.getElementById('eraseBtn').style.backgroundColor = '#ff0000';
-            } else {
-                document.getElementById('eraseBtn').style.backgroundColor = '';
-            }
+            document.getElementById('eraseBtn').style.backgroundColor = eraseMode ? '#ff0000' : '';
         });
 
         // Change pen color
         document.getElementById('colorPicker').addEventListener('input', (e) => {
             currentColor = e.target.value;
+        });
+
+        // Change background color
+        document.getElementById('bgColorPicker').addEventListener('input', (e) => {
+            bgColor = e.target.value;
+            canvas.style.backgroundColor = bgColor;  // Change the background color of canvas
+            init();  // Reinitialize canvas with the new background color
         });
 
         // Undo functionality
@@ -141,25 +171,15 @@
         // Redraw the canvas from history
         function redrawCanvas() {
             if (history.length === 0) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                init(); // If no history, clear the canvas and reapply the bg color
             } else {
                 const state = history[history.length - 1];
                 ctx.putImageData(state, 0, 0);
             }
         }
 
-        // Clear the canvas
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            history = [];
-            undone = [];
-        }
-
-        // Initialize drawing state
-        ctx.strokeStyle = currentColor;
-        ctx.lineWidth = lineWidth;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        // Initialize canvas when the page loads
+        init();
 
     </script>
 
